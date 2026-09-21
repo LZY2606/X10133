@@ -1,0 +1,2 @@
+[console_scripts]
+artifactproof = artifactproof.cli:main
