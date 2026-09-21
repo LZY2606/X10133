@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>产物核验站</title>
+<style>
+:root {
+  --bg: #0f1420; --panel: #181f2e; --line: #2a3550;
+  --text: #e6ebf5; --muted: #93a0b8; --accent: #4f8cff;
+  --good: #2fbf71; --warn: #e0a13c; --bad: #e5484d;
+  --ignored: #7c8aa5;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.6 -apple-system, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+header { padding: 20px 28px; border-bottom: 1px solid var(--line); }
+header h1 { margin: 0; font-size: 20px; }
+header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+main { max-width: 1180px; margin: 0 auto; padding: 24px 28px 60px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.card {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 16px 18px;
+}
+.card h2 { font-size: 15px; margin: 0 0 12px; }
+.drop {
+  border: 2px dashed var(--line); border-radius: 10px;
+  padding: 26px 14px; text-align: center; color: var(--muted);
+  cursor: pointer; transition: border-color .15s, background .15s;
+}
+.drop.dragover { border-color: var(--accent); background: #1b243a; }
+.drop.uploaded { border-color: var(--good); color: var(--text); }
+.drop.uploaded.quarantined { border-color: var(--bad); }
+.drop strong { color: var(--text); }
+.member-select { margin-top: 10px; }
+select, button, input {
+  font: inherit; color: var(--text);
+  background: #111827; border: 1px solid var(--line);
+  border-radius: 7px; padding: 7px 10px;
+}
+select { width: 100%; margin-top: 6px; }
+button {
+  background: var(--accent); border-color: var(--accent);
+  color: #fff; cursor: pointer;
+}
+button.secondary { background: #22304a; border-color: var(--line); color: var(--text); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 18px 0; }
+.toolbar label { color: var(--muted); }
+.policy-box { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+.policy-box label { color: var(--muted); font-size: 13px; }
+.verdict {
+  border-radius: 10px; padding: 14px 18px; font-size: 16px;
+  font-weight: 600; margin: 8px 0 18px; border: 1px solid var(--line);
+}
+.verdict.reproducible { background: rgba(47,191,113,.12); border-color: var(--good); color: var(--good); }
+.verdict.equivalent_under_policy { background: rgba(224,161,60,.12); border-color: var(--warn); color: var(--warn); }
+.verdict.content_differs { background: rgba(229,72,77,.12); border-color: var(--bad); color: var(--bad); }
+.verdict.quarantined { background: rgba(229,72,77,.18); border-color: var(--bad); color: #ff9b9e; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: 12px; }
+.tag.real { background: rgba(229,72,77,.16); color: #ff9b9e; }
+.tag.ignored { background: rgba(124,138,165,.18); color: var(--ignored); }
+.tag.quar { background: rgba(229,72,77,.16); color: #ff9b9e; }
+.tag.good { background: rgba(47,191,113,.16); color: #7be3ab; }
+.section-title { margin: 22px 0 8px; font-size: 15px; }
+.muted { color: var(--muted); }
+.path { word-break: break-all; }
+.diff-fields { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill {
+  border: 1px solid var(--line); border-radius: 6px;
+  padding: 2px 8px; font-size: 12px;
+}
+details { margin: 4px 0; }
+summary { cursor: pointer; }
+.kv { color: var(--muted); font-size: 12px; word-break: break-all; }
+#toast {
+  position: fixed; right: 18px; bottom: 18px; max-width: 380px;
+  background: #22304a; border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 14px; display: none;
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>产物核验站</h1>
+  <p>同一源码快照、不同机器生成的归档：安全扫描 · 规范化清单 · 内容/元数据/顺序分离比较 · 字节稳定证明</p>
+</header>
+<main>
+  <div class="grid">
+    <section class="card">
+      <h2>归档 A</h2>
+      <div id="dropA" class="drop">
+        拖入 zip / tar 系列归档，或点击选择
+        <input id="fileA" type="file" hidden accept=".zip,.tar,.gz,.tgz,.bz2,.tbz2,.xz,.txz">
+      </div>
+      <div class="member-select">
+        <span class="muted">或选择已上传归档：</span>
+        <select id="selectA"></select>
+      </div>
+      <div id="infoA" class="kv"></div>
+    </section>
+    <section class="card">
+      <h2>归档 B</h2>
+      <div id="dropB" class="drop">
+        拖入 zip / tar 系列归档，或点击选择
+        <input id="fileB" type="file" hidden accept=".zip,.tar,.gz,.tgz,.bz2,.tbz2,.xz,.txz">
+      </div>
+      <div class="member-select">
+        <span class="muted">或选择已上传归档：</span>
+        <select id="selectB"></select>
+      </div>
+      <div id="infoB" class="kv"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:18px">
+    <h2>比较策略（只改变比较视图，不改写原始清单）</h2>
+    <div class="toolbar">
+      <label>已保存策略</label>
+      <select id="policySelect" style="width:260px"></select>
+      <button class="secondary" id="newPolicyBtn" type="button">另存为新版本…</button>
+      <input id="newPolicyName" placeholder="策略 id，例如 nightly" style="width:200px">
+    </div>
+    <div class="policy-box">
+      <label><input type="checkbox" id="igMtime"> 忽略时间戳 (mtime)</label>
+      <label><input type="checkbox" id="igUidGid"> 忽略 uid/gid</label>
+      <label><input type="checkbox" id="igComp"> 忽略压缩参数 (gzip mtime/等级)</label>
+      <label><input type="checkbox" id="igOrder"> 忽略成员顺序</label>
+      <label>权限可忽略掩码
+        <input id="modeMask" placeholder="0000 或 0777 全忽略" style="width:150px">
+      </label>
+    </div>
+    <div class="toolbar">
+      <button id="compareBtn" type="button">开始比较</button>
+      <span class="muted">比较会话彼此独立，重复上传相同字节复用 blob。</span>
+    </div>
+  </section>
+
+  <div id="verdict" class="verdict" hidden></div>
+  <div id="quarantinePanel"></div>
+  <div id="diffPanels"></div>
+</main>
+<div id="toast"></div>
+<script src="/assets/app.js"></script>
+</body>
+</html>

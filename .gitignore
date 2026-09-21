@@ -34,3 +34,7 @@ coverage/
 .vite/
 .turbo/
 *.tsbuildinfo
+
+# 产物核验站运行期数据
+.artifactproof-data/
+*.egg-info/

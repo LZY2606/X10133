@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools<70", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "artifactproof"
+version = "1.0.0"
+description = "可复现产物核验站：安全扫描 zip/tar 归档并比较真实内容差异与可忽略差异"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.scripts]
+artifactproof = "artifactproof.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["artifactproof*"]
+
+[tool.setuptools.package-data]
+artifactproof = ["web_assets/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
